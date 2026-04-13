@@ -16,19 +16,43 @@ SetKeyDelay, 50
 SetMouseDelay, 50
 SetWinDelay, 100W
 
-; -------------------------------
-; CONFIGURACIÓN
-; -------------------------------
+; ============================
+; SETUP
+; ============================
 
-; Coordenadas (CAMBIA ESTAS)
-ALMACENAR_X := 1480
-ALMACENAR_Y := 150
+MsgBox, 64, Setup, Vamos a configurar las coordenadas. Pulsa OK para continuar.
 
-DWG_X := 1576
-DWG_Y := 190
+; --- ALMACENAR ---
+MsgBox, 64, Setup, Coloca el ratón sobre ALMACENAR y pulsa F12.
+Hotkey, F12, SetAlmacenar, On
+KeyWait, F12, D
+Hotkey, F12, Off
 
-CMD_X := 30
-CMD_Y := 840
+; --- DWG ---
+MsgBox, 64, Setup, Coloca el ratón sobre DWG y pulsa F12.
+Hotkey, F12, SetDWG, On
+KeyWait, F12, D
+Hotkey, F12, Off
+
+; --- LÍNEA DE COMANDOS ---
+MsgBox, 64, Setup, Coloca el ratón sobre la línea de comandos y pulsa F12.
+Hotkey, F12, SetCMD, On
+KeyWait, F12, D
+Hotkey, F12, Off
+
+MsgBox, 64, Setup, Configuración completada. Ya puedes ejecutar el script normalmente.
+ExitApp
+
+; ============================
+; LEER CONFIGURACIÓN
+; ============================
+
+IniRead, ALMACENAR_X, %ConfigFile%, COORDS, ALMACENAR_X
+IniRead, ALMACENAR_Y, %ConfigFile%, COORDS, ALMACENAR_Y
+IniRead, DWG_X, %ConfigFile%, COORDS, DWG_X
+IniRead, DWG_Y, %ConfigFile%, COORDS, DWG_Y
+IniRead, CMD_X, %ConfigFile%, COORDS, CMD_X
+IniRead, CMD_Y, %ConfigFile%, COORDS, CMD_Y
 
 ; Lista de archivos SIN extensión
 FileList := "
