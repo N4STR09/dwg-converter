@@ -23,36 +23,38 @@ MouseGetPos, CMD_X, CMD_Y
 MsgBox, 64, OK, Línea de comandos:`nX=%CMD_X%  Y=%CMD_Y%
 
 ; ============================
+; SELECCIONAR CARPETA
+; ============================
+
+FileSelectFolder, Carpeta, , 3, Selecciona la carpeta con los archivos
+if Carpeta =
+{
+    MsgBox, No seleccionaste carpeta. Saliendo.
+    ExitApp
+}
+
+; Construir lista de archivos automáticamente
+FileList := ""
+
+Loop, %Carpeta%\*.*, 0
+{
+    Nombre := A_LoopFileName
+    StringSplit, Partes, Nombre, .
+    FileList := FileList . Partes1 . "`n"
+}
+
+MsgBox, 64, OK, Se han cargado los nombres desde:`n%Carpeta%
+
+; ============================
 ; PROGRAMA
 ; ============================
 
-; Activar la ventana de OneSpace
-; WinActivate, OneSpace
-; WinWaitActive, OneSpace
 Sleep, 5000
 
-; ================================
-;  SCRIPT DE EXPORTACIÓN MASIVA DWG
-;  OneSpace Designer Drafting 2002+
-;  Windows NT
-; ================================
-
-#SingleInstance Force
 SetTitleMatchMode, 2
 SetKeyDelay, 50
 SetMouseDelay, 50
 SetWinDelay, 100W
-
-; Lista de archivos SIN extensión
-FileList := "
-(
-3.11.00-1
-3.11.00
-3
-03.26.03-001U
-03.26.03-001a
-03.26.03-001
-)"
 
 ; -------------------------------
 ; BUCLE PRINCIPAL
@@ -72,7 +74,7 @@ Loop, Parse, FileList, `n, `r
     Click, %DWG_X%, %DWG_Y%
     Sleep, 300
 
-    ; Clic en la línea de comandos (CAMBIA ESTAS COORDENADAS)
+    ; Clic en la línea de comandos
     Click, %CMD_X%, %CMD_Y%
     Sleep, 200
 
@@ -82,7 +84,6 @@ Loop, Parse, FileList, `n, `r
 
     Send, {Enter}
     Sleep, 1200
-
 }
 
 MsgBox, Proceso terminado.
