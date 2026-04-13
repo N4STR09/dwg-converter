@@ -10,17 +10,14 @@ SetWinDelay, 100
 MsgBox, 64, Setup, Coloca el raton sobre ALMACENAR y pulsa F12.
 KeyWait, F12, D
 MouseGetPos, ALMACENAR_X, ALMACENAR_Y
-MsgBox, 64, OK, ALMACENAR:`nX=%ALMACENAR_X%  Y=%ALMACENAR_Y%
 
 MsgBox, 64, Setup, Coloca el raton sobre DWG y pulsa F12.
 KeyWait, F12, D
 MouseGetPos, DWG_X, DWG_Y
-MsgBox, 64, OK, DWG:`nX=%DWG_X%  Y=%DWG_Y%
 
 MsgBox, 64, Setup, Coloca el raton sobre la línea de comandos y pulsa F12.
 KeyWait, F12, D
 MouseGetPos, CMD_X, CMD_Y
-MsgBox, 64, OK, Línea de comandos:`nX=%CMD_X%  Y=%CMD_Y%
 
 ; ============================
 ; SELECCIONAR CARPETA
@@ -33,17 +30,40 @@ if Carpeta =
     ExitApp
 }
 
-; Construir lista de archivos automáticamente
+; ============================
+; GENERAR LISTA FILTRADA
+; ============================
+
 FileList := ""
 
 Loop, %Carpeta%\*.*, 0
 {
-    Nombre := A_LoopFileName
-    StringSplit, Partes, Nombre, .
-    FileList := FileList . Partes1 . "`n"
+    NombreCompleto := A_LoopFileName
+
+    ; ============================
+    ; CORRECCIÓN DEFINITIVA
+    ; NO cortar por puntos
+    ; NO interpretar extensiones
+    ; Usar el nombre EXACTO
+    ; ============================
+
+    Base := NombreCompleto   ; nombre tal cual
+
+    ; Si ya existe el DWG correspondiente → saltar
+    DWGPath := Carpeta . "\" . Base . ".dwg"
+    if FileExist(DWGPath)
+        continue
+
+    ; Si el archivo ES un DWG → ignorarlo
+    if (SubStr(Base, -3) = ".dwg" or SubStr(Base, -3) = ".DWG") or SubStr(NombreCompleto, -3) = ".bak"
+    or SubStr(NombreCompleto, -3) = ".tmp" or SubStr(NombreCompleto, -3) = ".log"
+        continue
+
+    ; Añadir a la lista
+    FileList := FileList . Base . "`n"
 }
 
-MsgBox, 64, OK, Se han cargado los nombres desde:`n%Carpeta%
+MsgBox, 64, OK, Archivos pendientes de exportar:`n%FileList%
 
 ; ============================
 ; PROGRAMA
