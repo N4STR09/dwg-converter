@@ -1,6 +1,5 @@
 ; Activar la ventana de OneSpace
-; WinActivate, OneSpace
-; WinWaitActive, OneSpace
+Run, "C:\Archivos de programa\CoCreate\OSD_Drafting_11.65\bin\Start.exe"
 Sleep, 5000
 
 
