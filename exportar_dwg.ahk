@@ -1,8 +1,35 @@
+#SingleInstance Force
+SetKeyDelay, 50
+SetMouseDelay, 50
+SetWinDelay, 100
+
+; ============================
+; SETUP SIEMPRE
+; ============================
+
+MsgBox, 64, Setup, Coloca el raton sobre ALMACENAR y pulsa F12.
+KeyWait, F12, D
+MouseGetPos, ALMACENAR_X, ALMACENAR_Y
+MsgBox, 64, OK, ALMACENAR:`nX=%ALMACENAR_X%  Y=%ALMACENAR_Y%
+
+MsgBox, 64, Setup, Coloca el raton sobre DWG y pulsa F12.
+KeyWait, F12, D
+MouseGetPos, DWG_X, DWG_Y
+MsgBox, 64, OK, DWG:`nX=%DWG_X%  Y=%DWG_Y%
+
+MsgBox, 64, Setup, Coloca el raton sobre la línea de comandos y pulsa F12.
+KeyWait, F12, D
+MouseGetPos, CMD_X, CMD_Y
+MsgBox, 64, OK, Línea de comandos:`nX=%CMD_X%  Y=%CMD_Y%
+
+; ============================
+; PROGRAMA
+; ============================
+
 ; Activar la ventana de OneSpace
 ; WinActivate, OneSpace
 ; WinWaitActive, OneSpace
 Sleep, 5000
-
 
 ; ================================
 ;  SCRIPT DE EXPORTACIÓN MASIVA DWG
@@ -15,44 +42,6 @@ SetTitleMatchMode, 2
 SetKeyDelay, 50
 SetMouseDelay, 50
 SetWinDelay, 100W
-
-; ============================
-; SETUP
-; ============================
-
-MsgBox, 64, Setup, Vamos a configurar las coordenadas. Pulsa OK para continuar.
-
-; --- ALMACENAR ---
-MsgBox, 64, Setup, Coloca el ratón sobre ALMACENAR y pulsa F12.
-Hotkey, F12, SetAlmacenar, On
-KeyWait, F12, D
-Hotkey, F12, Off
-
-; --- DWG ---
-MsgBox, 64, Setup, Coloca el ratón sobre DWG y pulsa F12.
-Hotkey, F12, SetDWG, On
-KeyWait, F12, D
-Hotkey, F12, Off
-
-; --- LÍNEA DE COMANDOS ---
-MsgBox, 64, Setup, Coloca el ratón sobre la línea de comandos y pulsa F12.
-Hotkey, F12, SetCMD, On
-KeyWait, F12, D
-Hotkey, F12, Off
-
-MsgBox, 64, Setup, Configuración completada. Ya puedes ejecutar el script normalmente.
-ExitApp
-
-; ============================
-; LEER CONFIGURACIÓN
-; ============================
-
-IniRead, ALMACENAR_X, %ConfigFile%, COORDS, ALMACENAR_X
-IniRead, ALMACENAR_Y, %ConfigFile%, COORDS, ALMACENAR_Y
-IniRead, DWG_X, %ConfigFile%, COORDS, DWG_X
-IniRead, DWG_Y, %ConfigFile%, COORDS, DWG_Y
-IniRead, CMD_X, %ConfigFile%, COORDS, CMD_X
-IniRead, CMD_Y, %ConfigFile%, COORDS, CMD_Y
 
 ; Lista de archivos SIN extensión
 FileList := "
