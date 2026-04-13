@@ -1,3 +1,9 @@
+; Activar la ventana de OneSpace
+; WinActivate, OneSpace
+; WinWaitActive, OneSpace
+Sleep, 5000
+
+
 ; ================================
 ;  SCRIPT DE EXPORTACIÓN MASIVA DWG
 ;  OneSpace Designer Drafting 2002+
@@ -18,19 +24,21 @@ SetWinDelay, 100W
 ALMACENAR_X := 1480
 ALMACENAR_Y := 150
 
-DWG_X := 1717
+DWG_X := 1576
 DWG_Y := 190
 
-CMD_X := 1188
-CMD_Y := 375
+CMD_X := 30
+CMD_Y := 840
 
 ; Lista de archivos SIN extensión
 FileList := "
 (
-pieza_001
-pieza_002
-pieza_003
-; ... añade aquí los 20.000 nombres
+3.11.00-1
+3.11.00
+3
+03.26.03-001U
+03.26.03-001a
+03.26.03-001
 )"
 
 ; -------------------------------
@@ -60,7 +68,7 @@ Loop, Parse, FileList, `n, `r
     Sleep, 200
 
     Send, {Enter}
-    Sleep, 800
+    Sleep, 1200
 
 }
 
