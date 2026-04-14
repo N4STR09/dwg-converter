@@ -78,7 +78,7 @@ Loop, %Carpeta%\*.*, 0
      or SubStr(NombreCompleto, -3) = ".tmp"
      or SubStr(NombreCompleto, -3) = ".log")
     {
-        FileAppend, Ignorado por extensión: %NombreCompleto%`n, %LogFile%
+        FileAppend, Ignorado por extension: %NombreCompleto%`n, %LogFile%
         FileAppend, %NombreCompleto%;Ignorado`n, %CSVFile%
         TotalIgnorados++
         continue
@@ -155,7 +155,7 @@ Loop, Parse, FileList, `n, `r
     Sleep, 200
 
     Send, {Enter}
-    Sleep, 1200
+    Sleep, 3000
 
     ; Registrar resultado
     if ErrorLevel
@@ -178,7 +178,7 @@ Loop, Parse, FileList, `n, `r
 
 Resumen =
 (
-Resumen de ejecución:
+Resumen de ejecucion:
 
 Total encontrados: %TotalEncontrados%
 Ignorados: %TotalIgnorados%
