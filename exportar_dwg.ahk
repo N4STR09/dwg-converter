@@ -20,6 +20,17 @@ if !FileExist(CSVFile)
     FileAppend, Nombre;Estado`n, %CSVFile%
 
 ; ============================
+; CONTADORES PARA RESUMEN
+; ============================
+
+TotalEncontrados := 0
+TotalIgnorados := 0
+TotalSaltados := 0
+TotalCola := 0
+TotalProcesados := 0
+TotalErrores := 0
+
+; ============================
 ; SETUP SIEMPRE
 ; ============================
 
@@ -57,6 +68,7 @@ FileList := ""
 Loop, %Carpeta%\*.*, 0
 {
     NombreCompleto := A_LoopFileName
+    TotalEncontrados++
 
     ; ============================
     ; EXCEPCIONES DE EXTENSIONES
@@ -68,6 +80,7 @@ Loop, %Carpeta%\*.*, 0
     {
         FileAppend, Ignorado por extensión: %NombreCompleto%`n, %LogFile%
         FileAppend, %NombreCompleto%;Ignorado`n, %CSVFile%
+        TotalIgnorados++
         continue
     }
 
@@ -83,6 +96,7 @@ Loop, %Carpeta%\*.*, 0
     {
         FileAppend, Saltado (ya existe DWG): %Base%`n, %LogFile%
         FileAppend, %Base%;Saltado`n, %CSVFile%
+        TotalSaltados++
         continue
     }
 
@@ -91,13 +105,17 @@ Loop, %Carpeta%\*.*, 0
     {
         FileAppend, Ignorado (es DWG): %Base%`n, %LogFile%
         FileAppend, %Base%;Ignorado`n, %CSVFile%
+        TotalIgnorados++
         continue
     }
 
     ; Añadir a la lista
     FileList := FileList . Base . "`n"
     FileAppend, Añadido a la cola: %Base%`n, %LogFile%
+    TotalCola++
 }
+
+MsgBox, 64, OK, Archivos pendientes de exportar:`n%FileList%
 
 ; ============================
 ; PROGRAMA
@@ -146,17 +164,45 @@ Loop, Parse, FileList, `n, `r
     {
         FileAppend, ERROR procesando: %Nombre%`n, %LogFile%
         FileAppend, %Nombre%;Error`n, %CSVFile%
+        TotalErrores++
     }
     else
     {
         FileAppend, OK: %Nombre%`n, %LogFile%
         FileAppend, %Nombre%;Procesado`n, %CSVFile%
+        TotalProcesados++
     }
 }
 
-MsgBox, Proceso terminado.
+; ============================
+; RESUMEN FINAL EN PANTALLA
+; ============================
 
-FileAppend, Fin: %A_Now%`n, %LogFile%
+Resumen =
+(
+Resumen de ejecución:
+
+Total encontrados: %TotalEncontrados%
+Ignorados: %TotalIgnorados%
+Saltados (ya DWG): %TotalSaltados%
+Añadidos a cola: %TotalCola%
+Procesados OK: %TotalProcesados%
+Errores: %TotalErrores%
+)
+
+MsgBox, 64, Resumen final, %Resumen%
+
+; ============================
+; RESUMEN FINAL EN EL LOG
+; ============================
+
+FileAppend, `nResumen de ejecución:`n, %LogFile%
+FileAppend, Total encontrados: %TotalEncontrados%`n, %LogFile%
+FileAppend, Ignorados: %TotalIgnorados%`n, %LogFile%
+FileAppend, Saltados (ya DWG): %TotalSaltados%`n, %LogFile%
+FileAppend, Añadidos a cola: %TotalCola%`n, %LogFile%
+FileAppend, Procesados OK: %TotalProcesados%`n, %LogFile%
+FileAppend, Errores: %TotalErrores%`n, %LogFile%
 FileAppend, ==============================`n, %LogFile%
 
 ExitApp
