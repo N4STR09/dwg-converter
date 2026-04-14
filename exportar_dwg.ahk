@@ -29,6 +29,29 @@ TotalProcesados := 0
 TotalErrores := 0
 
 ; ============================
+; FUNCIÓN RESUMEN FINAL
+; ============================
+
+ResumenFinal() {
+    global TotalEncontrados, TotalIgnorados, TotalSaltados, TotalCola
+    global TotalProcesados, TotalErrores
+
+    Resumen =
+    (
+Resumen final:
+
+Total encontrados: %TotalEncontrados%
+Ignorados: %TotalIgnorados%
+Saltados: %TotalSaltados%
+En cola: %TotalCola%
+Procesados OK: %TotalProcesados%
+Errores: %TotalErrores%
+    )
+
+    MsgBox, 48, Resumen, %Resumen%
+}
+
+; ============================
 ; SETUP
 ; ============================
 
@@ -180,20 +203,8 @@ Loop, Parse, FileList, `n, `r
             Run, %OneSpaceCMD%
             Sleep, 3000
 
-            ; Mostrar resumen final
-            Resumen =
-            (
-Resumen final:
-
-Total encontrados: %TotalEncontrados%
-Ignorados: %TotalIgnorados%
-Saltados: %TotalSaltados%
-En cola: %TotalCola%
-Procesados OK: %TotalProcesados%
-Errores: %TotalErrores%
-            )
-
-            MsgBox, 48, Resumen, %Resumen%
+            ; Mostrar resumen final SIEMPRE
+            ResumenFinal()
 
             ExitApp
         }
@@ -223,3 +234,10 @@ Errores: %TotalErrores%
         TotalProcesados++
     }
 }
+
+; ============================
+; RESUMEN FINAL SIEMPRE
+; ============================
+
+ResumenFinal()
+ExitApp
