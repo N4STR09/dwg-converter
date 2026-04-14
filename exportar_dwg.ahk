@@ -10,17 +10,15 @@ SetWinDelay, 100
 LogFile := A_ScriptDir . "\export_log.txt"
 CSVFile := A_ScriptDir . "\export_resultados.csv"
 
-; Cabecera del log TXT
 FileAppend, `n`n==============================`n, %LogFile%
 FileAppend, Inicio: %A_Now%`n, %LogFile%
 FileAppend, ==============================`n, %LogFile%
 
-; Cabecera del CSV (solo si no existe)
 if !FileExist(CSVFile)
     FileAppend, Nombre;Estado`n, %CSVFile%
 
 ; ============================
-; CONTADORES PARA RESUMEN
+; CONTADORES
 ; ============================
 
 TotalEncontrados := 0
@@ -31,7 +29,7 @@ TotalProcesados := 0
 TotalErrores := 0
 
 ; ============================
-; SETUP SIEMPRE
+; SETUP
 ; ============================
 
 MsgBox, 64, Setup, Coloca el raton sobre ALMACENAR y pulsa F12.
@@ -70,10 +68,6 @@ Loop, %Carpeta%\*.*, 0
     NombreCompleto := A_LoopFileName
     TotalEncontrados++
 
-    ; ============================
-    ; EXCEPCIONES DE EXTENSIONES
-    ; ============================
-
     if (SubStr(NombreCompleto, -3) = ".bak"
      or SubStr(NombreCompleto, -3) = ".tmp"
      or SubStr(NombreCompleto, -3) = ".log")
@@ -84,13 +78,8 @@ Loop, %Carpeta%\*.*, 0
         continue
     }
 
-    ; ============================
-    ; USAR NOMBRE COMPLETO TAL CUAL
-    ; ============================
-
     Base := NombreCompleto
 
-    ; Si ya existe el DWG correspondiente → saltar
     DWGPath := Carpeta . "\" . Base . ".dwg"
     if FileExist(DWGPath)
     {
@@ -100,7 +89,6 @@ Loop, %Carpeta%\*.*, 0
         continue
     }
 
-    ; Si el archivo ES un DWG → ignorarlo
     if (SubStr(Base, -3) = ".dwg" or SubStr(Base, -3) = ".DWG")
     {
         FileAppend, Ignorado (es DWG): %Base%`n, %LogFile%
@@ -109,9 +97,8 @@ Loop, %Carpeta%\*.*, 0
         continue
     }
 
-    ; Añadir a la lista
-    FileList := FileList . Base . "`n"
-    FileAppend, Añadido a la cola: %Base%`n, %LogFile%
+    FileList .= Base . "`n"
+    FileAppend, Agregado a la cola: %Base%`n, %LogFile%
     TotalCola++
 }
 
@@ -119,12 +106,14 @@ Loop, %Carpeta%\*.*, 0
 ; PROGRAMA
 ; ============================
 
-Sleep, 5000
-
+Sleep, 3000
 SetTitleMatchMode, 2
-SetKeyDelay, 50
-SetMouseDelay, 50
-SetWinDelay, 100W
+
+; ============================
+; RUTA DE ONESPACE
+; ============================
+
+OneSpaceCMD := "C:\Archivos de programa\CoCreate\OSD_Drafting_11.65\old_ui\ME10F"
 
 ; -------------------------------
 ; BUCLE PRINCIPAL
@@ -138,27 +127,90 @@ Loop, Parse, FileList, `n, `r
 
     FileAppend, Procesando: %Nombre%`n, %LogFile%
 
-    ; Clic en ALMACENAR
+    Inicio := A_TickCount
+    Timeout := 20000
+
+    ; ============================
+    ; EXPORTACIÓN
+    ; ============================
+
     Click, %ALMACENAR_X%, %ALMACENAR_Y%
     Sleep, 300
 
-    ; Clic en DWG
     Click, %DWG_X%, %DWG_Y%
     Sleep, 300
 
-    ; Clic en la linea de comandos
     Click, %CMD_X%, %CMD_Y%
     Sleep, 200
 
-    ; Escribir nombre
     Send, '%Nombre%
     Sleep, 200
-
     Send, {Enter}
-    Sleep, 3000
 
-    ; Registrar resultado
-    if ErrorLevel
+    ErrorLevel := 0
+
+    ; ============================
+    ; ESPERA INTELIGENTE
+    ; ============================
+
+    Loop
+    {
+        Sleep, 200
+
+        ; 1. Timeout
+        if (A_TickCount - Inicio > Timeout)
+        {
+            ErrorLevel := 1
+            break
+        }
+
+        ; 2. Proceso cerrado → detener todo
+        Process, Exist, ME10F.exe
+        if (ErrorLevel = 0)
+        {
+            ; Registrar error
+            FileAppend, ERROR CRITICO: OneSpace se ha cerrado procesando %Nombre%`n, %LogFile%
+            FileAppend, %Nombre%;Error`n, %CSVFile%
+            TotalErrores++
+
+            ; Mostrar mensaje
+            MsgBox, 16, ERROR CRITICO, OneSpace se ha cerrado inesperadamente.`n`nEl proceso se detendrá.
+
+            ; Reabrir OneSpace
+            Run, %OneSpaceCMD%
+            Sleep, 3000
+
+            ; Mostrar resumen final
+            Resumen =
+            (
+Resumen final:
+
+Total encontrados: %TotalEncontrados%
+Ignorados: %TotalIgnorados%
+Saltados: %TotalSaltados%
+En cola: %TotalCola%
+Procesados OK: %TotalProcesados%
+Errores: %TotalErrores%
+            )
+
+            MsgBox, 48, Resumen, %Resumen%
+
+            ExitApp
+        }
+
+        ; 3. DWG generado → OK
+        if FileExist(Carpeta . "\" . Nombre . ".dwg")
+        {
+            ErrorLevel := 0
+            break
+        }
+    }
+
+    ; ============================
+    ; RESULTADO FINAL DEL ARCHIVO
+    ; ============================
+
+    if (ErrorLevel = 1)
     {
         FileAppend, ERROR procesando: %Nombre%`n, %LogFile%
         FileAppend, %Nombre%;Error`n, %CSVFile%
@@ -171,36 +223,3 @@ Loop, Parse, FileList, `n, `r
         TotalProcesados++
     }
 }
-
-; ============================
-; RESUMEN FINAL EN PANTALLA
-; ============================
-
-Resumen =
-(
-Resumen de ejecucion:
-
-Total encontrados: %TotalEncontrados%
-Ignorados: %TotalIgnorados%
-Saltados (ya DWG): %TotalSaltados%
-Agregados a cola: %TotalCola%
-Procesados OK: %TotalProcesados%
-Errores: %TotalErrores%
-)
-
-MsgBox, 64, Resumen final, %Resumen%
-
-; ============================
-; RESUMEN FINAL EN EL LOG
-; ============================
-
-FileAppend, `nResumen de ejecución:`n, %LogFile%
-FileAppend, Total encontrados: %TotalEncontrados%`n, %LogFile%
-FileAppend, Ignorados: %TotalIgnorados%`n, %LogFile%
-FileAppend, Saltados (ya DWG): %TotalSaltados%`n, %LogFile%
-FileAppend, Agregados a cola: %TotalCola%`n, %LogFile%
-FileAppend, Procesados OK: %TotalProcesados%`n, %LogFile%
-FileAppend, Errores: %TotalErrores%`n, %LogFile%
-FileAppend, ==============================`n, %LogFile%
-
-ExitApp
