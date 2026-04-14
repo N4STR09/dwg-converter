@@ -4,6 +4,22 @@ SetMouseDelay, 50
 SetWinDelay, 100
 
 ; ============================
+; CONFIGURACIÓN DEL LOG
+; ============================
+
+LogFile := A_ScriptDir . "\export_log.txt"
+CSVFile := A_ScriptDir . "\export_resultados.csv"
+
+; Cabecera del log TXT
+FileAppend, `n`n==============================`n, %LogFile%
+FileAppend, Inicio: %A_Now%`n, %LogFile%
+FileAppend, ==============================`n, %LogFile%
+
+; Cabecera del CSV (solo si no existe)
+if !FileExist(CSVFile)
+    FileAppend, Nombre;Estado;Ruta;FechaHora`n, %CSVFile%
+
+; ============================
 ; SETUP SIEMPRE
 ; ============================
 
@@ -30,6 +46,8 @@ if Carpeta =
     ExitApp
 }
 
+FileAppend, Carpeta seleccionada: %Carpeta%`n, %LogFile%
+
 ; ============================
 ; GENERAR LISTA FILTRADA
 ; ============================
@@ -41,26 +59,45 @@ Loop, %Carpeta%\*.*, 0
     NombreCompleto := A_LoopFileName
 
     ; ============================
-    ; CORRECCIÓN DEFINITIVA
-    ; NO cortar por puntos
-    ; NO interpretar extensiones
-    ; Usar el nombre EXACTO
+    ; EXCEPCIONES DE EXTENSIONES
     ; ============================
 
-    Base := NombreCompleto   ; nombre tal cual
+    if (SubStr(NombreCompleto, -3) = ".bak"
+     or SubStr(NombreCompleto, -3) = ".tmp"
+     or SubStr(NombreCompleto, -3) = ".log")
+    {
+        FileAppend, Ignorado por extensión: %NombreCompleto%`n, %LogFile%
+        FileAppend, %NombreCompleto%;Ignorado extensión;%Carpeta%;%A_Now%`n, %CSVFile%
+        continue
+    }
+
+    ; ============================
+    ; USAR NOMBRE COMPLETO TAL CUAL
+    ; ============================
+
+    Base := NombreCompleto
 
     ; Si ya existe el DWG correspondiente → saltar
     DWGPath := Carpeta . "\" . Base . ".dwg"
     if FileExist(DWGPath)
+    {
+        FileAppend, Saltado (ya existe DWG): %Base%`n, %LogFile%
+        FileAppend, %Base%;Saltado (ya existe DWG);%Carpeta%;%A_Now%`n, %CSVFile%
         continue
+    }
 
     ; Si el archivo ES un DWG → ignorarlo
-    if (SubStr(Base, -3) = ".dwg" or SubStr(Base, -3) = ".DWG") or SubStr(NombreCompleto, -3) = ".bak"
-    or SubStr(NombreCompleto, -3) = ".tmp" or SubStr(NombreCompleto, -3) = ".log"
+    if (SubStr(Base, -3) = ".dwg" or SubStr(Base, -3) = ".DWG")
+    {
+        FileAppend, Ignorado (es DWG): %Base%`n, %LogFile%
+        FileAppend, %Base%;Ignorado (es DWG);%Carpeta%;%A_Now%`n, %CSVFile%
         continue
+    }
 
     ; Añadir a la lista
     FileList := FileList . Base . "`n"
+    FileAppend, Añadido a la cola: %Base%`n, %LogFile%
+    FileAppend, %Base%;Añadido a cola;%Carpeta%;%A_Now%`n, %CSVFile%
 }
 
 MsgBox, 64, OK, Archivos pendientes de exportar:`n%FileList%
@@ -86,6 +123,9 @@ Loop, Parse, FileList, `n, `r
     if (Nombre = "")
         continue
 
+    FileAppend, Procesando: %Nombre%`n, %LogFile%
+    FileAppend, %Nombre%;Procesando;%Carpeta%;%A_Now%`n, %CSVFile%
+
     ; Clic en ALMACENAR
     Click, %ALMACENAR_X%, %ALMACENAR_Y%
     Sleep, 300
@@ -104,7 +144,25 @@ Loop, Parse, FileList, `n, `r
 
     Send, {Enter}
     Sleep, 1200
+
+    ; Registrar resultado
+    if ErrorLevel
+    {
+        FileAppend, ERROR procesando: %Nombre%`n, %LogFile%
+        FileAppend, %Nombre%;ERROR;%Carpeta%;%A_Now%`n, %CSVFile%
+    }
+    else
+    {
+        FileAppend, OK: %Nombre%`n, %LogFile%
+        FileAppend, %Nombre%;OK;%Carpeta%;%A_Now%`n, %CSVFile%
+    }
 }
 
 MsgBox, Proceso terminado.
+
+FileAppend, Fin: %A_Now%`n, %LogFile%
+FileAppend, ==============================`n, %LogFile%
+
+FileAppend, FIN;Script completado;%Carpeta%;%A_Now%`n, %CSVFile%
+
 ExitApp
