@@ -17,7 +17,7 @@ FileAppend, ==============================`n, %LogFile%
 
 ; Cabecera del CSV (solo si no existe)
 if !FileExist(CSVFile)
-    FileAppend, Nombre;Estado;Ruta;FechaHora`n, %CSVFile%
+    FileAppend, Nombre;Estado`n, %CSVFile%
 
 ; ============================
 ; SETUP SIEMPRE
@@ -67,7 +67,7 @@ Loop, %Carpeta%\*.*, 0
      or SubStr(NombreCompleto, -3) = ".log")
     {
         FileAppend, Ignorado por extensión: %NombreCompleto%`n, %LogFile%
-        FileAppend, %NombreCompleto%;Ignorado extensión;%Carpeta%;%A_Now%`n, %CSVFile%
+        FileAppend, %NombreCompleto%;Ignorado`n, %CSVFile%
         continue
     }
 
@@ -82,7 +82,7 @@ Loop, %Carpeta%\*.*, 0
     if FileExist(DWGPath)
     {
         FileAppend, Saltado (ya existe DWG): %Base%`n, %LogFile%
-        FileAppend, %Base%;Saltado (ya existe DWG);%Carpeta%;%A_Now%`n, %CSVFile%
+        FileAppend, %Base%;Saltado`n, %CSVFile%
         continue
     }
 
@@ -90,17 +90,14 @@ Loop, %Carpeta%\*.*, 0
     if (SubStr(Base, -3) = ".dwg" or SubStr(Base, -3) = ".DWG")
     {
         FileAppend, Ignorado (es DWG): %Base%`n, %LogFile%
-        FileAppend, %Base%;Ignorado (es DWG);%Carpeta%;%A_Now%`n, %CSVFile%
+        FileAppend, %Base%;Ignorado`n, %CSVFile%
         continue
     }
 
     ; Añadir a la lista
     FileList := FileList . Base . "`n"
     FileAppend, Añadido a la cola: %Base%`n, %LogFile%
-    FileAppend, %Base%;Añadido a cola;%Carpeta%;%A_Now%`n, %CSVFile%
 }
-
-MsgBox, 64, OK, Archivos pendientes de exportar:`n%FileList%
 
 ; ============================
 ; PROGRAMA
@@ -124,7 +121,6 @@ Loop, Parse, FileList, `n, `r
         continue
 
     FileAppend, Procesando: %Nombre%`n, %LogFile%
-    FileAppend, %Nombre%;Procesando;%Carpeta%;%A_Now%`n, %CSVFile%
 
     ; Clic en ALMACENAR
     Click, %ALMACENAR_X%, %ALMACENAR_Y%
@@ -149,12 +145,12 @@ Loop, Parse, FileList, `n, `r
     if ErrorLevel
     {
         FileAppend, ERROR procesando: %Nombre%`n, %LogFile%
-        FileAppend, %Nombre%;ERROR;%Carpeta%;%A_Now%`n, %CSVFile%
+        FileAppend, %Nombre%;Error`n, %CSVFile%
     }
     else
     {
         FileAppend, OK: %Nombre%`n, %LogFile%
-        FileAppend, %Nombre%;OK;%Carpeta%;%A_Now%`n, %CSVFile%
+        FileAppend, %Nombre%;Procesado`n, %CSVFile%
     }
 }
 
@@ -162,7 +158,5 @@ MsgBox, Proceso terminado.
 
 FileAppend, Fin: %A_Now%`n, %LogFile%
 FileAppend, ==============================`n, %LogFile%
-
-FileAppend, FIN;Script completado;%Carpeta%;%A_Now%`n, %CSVFile%
 
 ExitApp
