@@ -42,7 +42,7 @@ MsgBox, 64, Setup, Coloca el raton sobre DWG y pulsa F12.
 KeyWait, F12, D
 MouseGetPos, DWG_X, DWG_Y
 
-MsgBox, 64, Setup, Coloca el raton sobre la línea de comandos y pulsa F12.
+MsgBox, 64, Setup, Coloca el raton sobre la linea de comandos y pulsa F12.
 KeyWait, F12, D
 MouseGetPos, CMD_X, CMD_Y
 
@@ -115,8 +115,6 @@ Loop, %Carpeta%\*.*, 0
     TotalCola++
 }
 
-MsgBox, 64, OK, Archivos pendientes de exportar:`n%FileList%
-
 ; ============================
 ; PROGRAMA
 ; ============================
@@ -148,7 +146,7 @@ Loop, Parse, FileList, `n, `r
     Click, %DWG_X%, %DWG_Y%
     Sleep, 300
 
-    ; Clic en la línea de comandos
+    ; Clic en la linea de comandos
     Click, %CMD_X%, %CMD_Y%
     Sleep, 200
 
@@ -185,7 +183,7 @@ Resumen de ejecución:
 Total encontrados: %TotalEncontrados%
 Ignorados: %TotalIgnorados%
 Saltados (ya DWG): %TotalSaltados%
-Añadidos a cola: %TotalCola%
+Agregados a cola: %TotalCola%
 Procesados OK: %TotalProcesados%
 Errores: %TotalErrores%
 )
@@ -200,7 +198,7 @@ FileAppend, `nResumen de ejecución:`n, %LogFile%
 FileAppend, Total encontrados: %TotalEncontrados%`n, %LogFile%
 FileAppend, Ignorados: %TotalIgnorados%`n, %LogFile%
 FileAppend, Saltados (ya DWG): %TotalSaltados%`n, %LogFile%
-FileAppend, Añadidos a cola: %TotalCola%`n, %LogFile%
+FileAppend, Agregados a cola: %TotalCola%`n, %LogFile%
 FileAppend, Procesados OK: %TotalProcesados%`n, %LogFile%
 FileAppend, Errores: %TotalErrores%`n, %LogFile%
 FileAppend, ==============================`n, %LogFile%
