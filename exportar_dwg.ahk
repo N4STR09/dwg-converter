@@ -29,6 +29,37 @@ TotalProcesados := 0
 TotalErrores := 0
 
 ; ============================
+; CONFIG.INI
+; ============================
+
+ConfigFile := A_ScriptDir . "\config.ini"
+
+; Si no existe, crearlo con valores por defecto
+if !FileExist(ConfigFile)
+{
+    IniWrite, C:\Archivos de programa\CoCreate\OSD_Drafting_11.65\old_ui\ME10F, %ConfigFile%, General, RutaOneSpace
+    IniWrite, 20000, %ConfigFile%, General, Timeout
+    IniWrite, 2000, %ConfigFile%, General, TamanoMinimo
+    IniWrite, 20000000, %ConfigFile%, General, TamanoMaximo
+}
+
+; Leer valores
+IniRead, RutaOneSpace, %ConfigFile%, General, RutaOneSpace
+IniRead, TimeoutGlobal, %ConfigFile%, General, Timeout
+IniRead, TamanoMinimo, %ConfigFile%, General, TamanoMinimo
+IniRead, TamanoMaximo, %ConfigFile%, General, TamanoMaximo
+
+; Valores de seguridad si algo falla
+if (RutaOneSpace = "ERROR" or RutaOneSpace = "")
+    RutaOneSpace := "C:\Archivos de programa\CoCreate\OSD_Drafting_11.65\old_ui\ME10F"
+if (TimeoutGlobal = "ERROR" or TimeoutGlobal = "")
+    TimeoutGlobal := 20000
+if (TamanoMinimo = "ERROR" or TamanoMinimo = "")
+    TamanoMinimo := 2000
+if (TamanoMaximo = "ERROR" or TamanoMaximo = "")
+    TamanoMaximo := 20000000
+
+; ============================
 ; FUNCIÓN RESUMEN FINAL
 ; ============================
 
@@ -118,7 +149,7 @@ Loop, %Carpeta%\*.*, 0
         continue
     }
 
-    if (Tamano < 2000)
+    if (Tamano < TamanoMinimo)
     {
         FileAppend, Ignorado (posible corrupto - muy pequeño): %Base% (%Tamano% bytes)`n, %LogFile%
         FileAppend, %Base%;Posible corrupto (pequeño)`n, %CSVFile%
@@ -126,7 +157,7 @@ Loop, %Carpeta%\*.*, 0
         continue
     }
 
-    if (Tamano > 20000000)
+    if (Tamano > TamanoMaximo)
     {
         FileAppend, Ignorado (demasiado grande): %Base% (%Tamano% bytes)`n, %LogFile%
         FileAppend, %Base%;Demasiado grande`n, %CSVFile%
@@ -200,7 +231,7 @@ Loop, %Carpeta%\*.*, 0
 Sleep, 3000
 SetTitleMatchMode, 2
 
-OneSpaceCMD := "C:\Archivos de programa\CoCreate\OSD_Drafting_11.65\old_ui\ME10F"
+OneSpaceCMD := RutaOneSpace
 
 Loop, Parse, FileList, `n, `r
 {
@@ -211,7 +242,7 @@ Loop, Parse, FileList, `n, `r
     FileAppend, Procesando: %Nombre%`n, %LogFile%
 
     Inicio := A_TickCount
-    Timeout := 20000
+    Timeout := TimeoutGlobal
 
     Click, %ALMACENAR_X%, %ALMACENAR_Y%
     Sleep, 300
