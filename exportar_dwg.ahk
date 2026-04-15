@@ -8,14 +8,10 @@ SetWinDelay, 100
 ; ============================
 
 LogFile := A_ScriptDir . "\export_log.txt"
-CSVFile := A_ScriptDir . "\export_resultados.csv"
 
 FileAppend, `n`n==============================`n, %LogFile%
 FileAppend, Inicio: %A_Now%`n, %LogFile%
 FileAppend, ==============================`n, %LogFile%
-
-if !FileExist(CSVFile)
-    FileAppend, Nombre;Estado`n, %CSVFile%
 
 ; ============================
 ; CONTADORES
@@ -34,7 +30,6 @@ TotalErrores := 0
 
 ConfigFile := A_ScriptDir . "\config.ini"
 
-; Si no existe, crearlo con valores por defecto
 if !FileExist(ConfigFile)
 {
     IniWrite, C:\Archivos de programa\CoCreate\OSD_Drafting_11.65\old_ui\ME10F, %ConfigFile%, General, RutaOneSpace
@@ -43,13 +38,11 @@ if !FileExist(ConfigFile)
     IniWrite, 20000000, %ConfigFile%, General, TamanoMaximo
 }
 
-; Leer valores
 IniRead, RutaOneSpace, %ConfigFile%, General, RutaOneSpace
 IniRead, TimeoutGlobal, %ConfigFile%, General, Timeout
 IniRead, TamanoMinimo, %ConfigFile%, General, TamanoMinimo
 IniRead, TamanoMaximo, %ConfigFile%, General, TamanoMaximo
 
-; Valores de seguridad si algo falla
 if (RutaOneSpace = "ERROR" or RutaOneSpace = "")
     RutaOneSpace := "C:\Archivos de programa\CoCreate\OSD_Drafting_11.65\old_ui\ME10F"
 if (TimeoutGlobal = "ERROR" or TimeoutGlobal = "")
@@ -58,6 +51,15 @@ if (TamanoMinimo = "ERROR" or TamanoMinimo = "")
     TamanoMinimo := 2000
 if (TamanoMaximo = "ERROR" or TamanoMaximo = "")
     TamanoMaximo := 20000000
+
+; ============================
+; CONFIGURACIÓN DEL CSV (MEJORADO)
+; ============================
+
+FormatoFecha := A_YYYY "-" A_MM "-" A_DD "_" A_Hour "-" A_Min "-" A_Sec
+CSVFile := A_ScriptDir . "\export_" . FormatoFecha . ".csv"
+
+FileAppend, Nombre;Estado;Motivo;Fecha;Hora;Color`n, %CSVFile%
 
 ; ============================
 ; FUNCIÓN RESUMEN FINAL
@@ -116,7 +118,6 @@ FileAppend, Carpeta seleccionada: %Carpeta%`n, %LogFile%
 ; ============================
 
 FileList := ""
-
 IllegalChars := "<>:|?*"
 
 Loop, %Carpeta%\*.*, 0
@@ -131,47 +132,48 @@ Loop, %Carpeta%\*.*, 0
      or SubStr(NombreCompleto, -3) = ".log")
     {
         FileAppend, Ignorado por extension: %NombreCompleto%`n, %LogFile%
-        FileAppend, %NombreCompleto%;Ignorado extension`n, %CSVFile%
+        FileAppend, %NombreCompleto%;Ignorado extension;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
         TotalIgnorados++
         continue
     }
 
     Base := NombreCompleto
 
-    ; ARCHIVO VACÍO / CORRUPTO
+    ; ARCHIVO VACÍO
     FileGetSize, Tamano, %RutaCompleta%
-
     if (Tamano = 0)
     {
         FileAppend, Ignorado (archivo vacío): %Base%`n, %LogFile%
-        FileAppend, %Base%;Archivo vacio`n, %CSVFile%
+        FileAppend, %Base%;Ignorado;Archivo vacío;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
         TotalIgnorados++
         continue
     }
 
+    ; ARCHIVO MUY PEQUEÑO
     if (Tamano < TamanoMinimo)
     {
-        FileAppend, Ignorado (posible corrupto - muy pequeño): %Base% (%Tamano% bytes)`n, %LogFile%
-        FileAppend, %Base%;Posible corrupto (pequeño)`n, %CSVFile%
+        FileAppend, Ignorado (posible corrupto): %Base% (%Tamano% bytes)`n, %LogFile%
+        FileAppend, %Base%;Ignorado;Muy pequeño;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
         TotalIgnorados++
         continue
     }
 
+    ; ARCHIVO MUY GRANDE
     if (Tamano > TamanoMaximo)
     {
         FileAppend, Ignorado (demasiado grande): %Base% (%Tamano% bytes)`n, %LogFile%
-        FileAppend, %Base%;Demasiado grande`n, %CSVFile%
+        FileAppend, %Base%;Ignorado;Demasiado grande;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
         TotalIgnorados++
         continue
     }
 
-    ; NOMBRES ILEGALES (SIN REGEX)
+    ; NOMBRE ILEGAL
     Loop, Parse, IllegalChars
     {
         if InStr(Base, A_LoopField)
         {
-            FileAppend, Ignorado (caracter ilegal: %A_LoopField%): %Base%`n, %LogFile%
-            FileAppend, %Base%;Nombre ilegal`n, %CSVFile%
+            FileAppend, Ignorado (caracter ilegal): %Base%`n, %LogFile%
+            FileAppend, %Base%;Ignorado;Caracter ilegal;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
             TotalIgnorados++
             continue, 2
         }
@@ -181,19 +183,19 @@ Loop, %Carpeta%\*.*, 0
     FileRead, TestLectura, %RutaCompleta%
     if (ErrorLevel)
     {
-        FileAppend, Ignorado (sin permisos de lectura): %Base%`n, %LogFile%
-        FileAppend, %Base%;Sin permisos`n, %CSVFile%
+        FileAppend, Ignorado (sin permisos): %Base%`n, %LogFile%
+        FileAppend, %Base%;Ignorado;Sin permisos;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
         TotalIgnorados++
         continue
     }
 
-    ; ARCHIVO BLOQUEADO (MÉTODO COMPATIBLE)
+    ; ARCHIVO BLOQUEADO
     TempName := RutaCompleta . ".locktest"
     FileMove, %RutaCompleta%, %TempName%, 1
     if ErrorLevel
     {
-        FileAppend, Ignorado (archivo bloqueado): %Base%`n, %LogFile%
-        FileAppend, %Base%;Bloqueado`n, %CSVFile%
+        FileAppend, Ignorado (bloqueado): %Base%`n, %LogFile%
+        FileAppend, %Base%;Ignorado;Bloqueado;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
         TotalIgnorados++
         continue
     }
@@ -203,8 +205,8 @@ Loop, %Carpeta%\*.*, 0
     DWGPath := Carpeta . "\" . Base . ".dwg"
     if FileExist(DWGPath)
     {
-        FileAppend, Saltado (ya existe DWG): %Base%`n, %LogFile%
-        FileAppend, %Base%;Saltado`n, %CSVFile%
+        FileAppend, Saltado (DWG existe): %Base%`n, %LogFile%
+        FileAppend, %Base%;Saltado;DWG existente;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Amarillo`n, %CSVFile%
         TotalSaltados++
         continue
     }
@@ -213,7 +215,7 @@ Loop, %Carpeta%\*.*, 0
     if (SubStr(Base, -3) = ".dwg" or SubStr(Base, -3) = ".DWG")
     {
         FileAppend, Ignorado (es DWG): %Base%`n, %LogFile%
-        FileAppend, %Base%;Ignorado (DWG)`n, %CSVFile%
+        FileAppend, %Base%;Ignorado;Es DWG;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
         TotalIgnorados++
         continue
     }
@@ -273,7 +275,7 @@ Loop, Parse, FileList, `n, `r
         if (ErrorLevel = 0)
         {
             FileAppend, ERROR CRITICO: OneSpace se ha cerrado procesando %Nombre%`n, %LogFile%
-            FileAppend, %Nombre%;Error`n, %CSVFile%
+            FileAppend, %Nombre%;Error;OneSpace cerrado;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Rojo`n, %CSVFile%
             TotalErrores++
 
             MsgBox, 16, ERROR CRITICO, OneSpace se ha cerrado inesperadamente.`n`nEl proceso se detendra.
@@ -295,13 +297,13 @@ Loop, Parse, FileList, `n, `r
     if (ErrorLevel = 1)
     {
         FileAppend, ERROR procesando: %Nombre%`n, %LogFile%
-        FileAppend, %Nombre%;Error`n, %CSVFile%
+        FileAppend, %Nombre%;Error;Timeout;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Rojo`n, %CSVFile%
         TotalErrores++
     }
     else
     {
         FileAppend, OK: %Nombre%`n, %LogFile%
-        FileAppend, %Nombre%;Procesado`n, %CSVFile%
+        FileAppend, %Nombre%;Procesado;OK;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Verde`n, %CSVFile%
         TotalProcesados++
     }
 }
