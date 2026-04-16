@@ -1,14 +1,15 @@
-#SingleInstance Force
-SetKeyDelay, 50
-SetMouseDelay, 50
-SetWinDelay, 100
+#SingleInstance Force          ; Evita que se ejecuten varias copias del script
+SetKeyDelay, 50                ; Delay entre teclas enviadas
+SetMouseDelay, 50              ; Delay entre clics de ratón
+SetWinDelay, 100               ; Delay entre acciones de ventana
 
 ; ============================
 ; CONFIGURACIÓN DEL LOG
 ; ============================
 
-LogFile := A_ScriptDir . "\export_log.txt"
+LogFile := A_ScriptDir . "\export_log.txt"   ; Archivo donde se guardan lo que ha ocurrido en cada proceso
 
+; Cabecera del log
 FileAppend, `n`n==============================`n, %LogFile%
 FileAppend, Inicio: %A_Now%`n, %LogFile%
 FileAppend, ==============================`n, %LogFile%
@@ -17,49 +18,183 @@ FileAppend, ==============================`n, %LogFile%
 ; CONTADORES
 ; ============================
 
-TotalEncontrados := 0
-TotalIgnorados := 0
-TotalSaltados := 0
-TotalCola := 0
-TotalProcesados := 0
-TotalErrores := 0
+TotalEncontrados := 0      
+TotalIgnorados := 0        
+TotalSaltados := 0         
+TotalCola := 0             
+TotalProcesados := 0       
+TotalErrores := 0          
 
 ; ============================
 ; CONFIG.INI
 ; ============================
 
-ConfigFile := A_ScriptDir . "\config.ini"
+ConfigFile := A_ScriptDir . "\config.ini"   ; El rchivo externo que controla la configuración 
 
-if !FileExist(ConfigFile)
-{
+; Si no existe, se crea con valores por defecto
+
+if !FileExist(ConfigFile){
     IniWrite, C:\Archivos de programa\CoCreate\OSD_Drafting_11.65\old_ui\ME10F, %ConfigFile%, General, RutaOneSpace
     IniWrite, 20000, %ConfigFile%, General, Timeout
     IniWrite, 2000, %ConfigFile%, General, TamanoMinimo
     IniWrite, 20000000, %ConfigFile%, General, TamanoMaximo
 }
 
+; Se leen los valores del INI
+
 IniRead, RutaOneSpace, %ConfigFile%, General, RutaOneSpace
 IniRead, TimeoutGlobal, %ConfigFile%, General, Timeout
 IniRead, TamanoMinimo, %ConfigFile%, General, TamanoMinimo
 IniRead, TamanoMaximo, %ConfigFile%, General, TamanoMaximo
 
+; Valores por defecto si el INI está corrupto
 if (RutaOneSpace = "ERROR" or RutaOneSpace = "")
     RutaOneSpace := "C:\Archivos de programa\CoCreate\OSD_Drafting_11.65\old_ui\ME10F"
+
 if (TimeoutGlobal = "ERROR" or TimeoutGlobal = "")
     TimeoutGlobal := 20000
+
 if (TamanoMinimo = "ERROR" or TamanoMinimo = "")
     TamanoMinimo := 2000
+
 if (TamanoMaximo = "ERROR" or TamanoMaximo = "")
     TamanoMaximo := 20000000
 
 ; ============================
-; CONFIGURACIÓN DEL CSV (MEJORADO)
+; CONFIGURACIÓN DEL CSV
 ; ============================
 
 FormatoFecha := A_YYYY "-" A_MM "-" A_DD "_" A_Hour "-" A_Min "-" A_Sec
-CSVFile := A_ScriptDir . "\export_" . FormatoFecha . ".csv"
 
+; CSV único por ejecución
+CSVFile := A_ScriptDir . "\export_" . FormatoFecha . ".csv"   
+
+; Cabecera del CSV
 FileAppend, Nombre;Estado;Motivo;Fecha;Hora;Color`n, %CSVFile%
+
+; ============================
+; FUNCIONES AUXILIARES
+; ============================
+
+Log(Msg) {
+    global LogFile
+    FileAppend, %Msg%`n, %LogFile%   ; Añade texto al log
+}
+
+CSV(Nombre, Estado, Motivo, Color) {
+    global CSVFile
+    if (Color = "")
+        Color := "Gris"              ; Color por defecto
+    FileAppend, %Nombre%;%Estado%;%Motivo%;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;%Color%`n, %CSVFile%
+}
+
+RegistrarIgnorado(Base, Motivo, Color) {
+    global TotalIgnorados
+    if (Color = "")
+        Color := "Gris"
+
+    ; Registro en log
+    Log("Ignorado (" . Motivo . "): " . Base)  
+
+    ; Registro en CSV
+    CSV(Base, "Ignorado", Motivo, Color)        
+    TotalIgnorados++
+}
+
+ValidarTamano(Base, Tamano) {
+    global TamanoMinimo, TamanoMaximo
+    ; Devuelve un texto indicando el motivo del descarte, o vacío si es válido dependiendo de su tamaño
+    if (Tamano = 0)
+        return "Archivo vacio"
+    if (Tamano < TamanoMinimo)
+        return "Muy pequeño"
+    if (Tamano > TamanoMaximo)
+        return "Demasiado grande"
+    return ""
+}
+
+TieneCaracterIlegal(Base) {
+    IllegalChars := "<>:|?*"   ; Caracteres no permitidos
+    Loop, Parse, IllegalChars
+        if InStr(Base, A_LoopField)
+            return A_LoopField
+    return ""
+}
+
+ArchivoBloqueado(RutaCompleta) {
+    ; Intentamos renombrar el archivo
+    TempName := RutaCompleta . ".locktest"
+    FileMove, %RutaCompleta%, %TempName%, 1
+    if ErrorLevel
+        return true   
+    FileMove, %TempName%, %RutaCompleta%, 1
+    return false
+}
+
+ProcesarArchivo(Nombre) {
+    global ALMACENAR_X, ALMACENAR_Y, DWG_X, DWG_Y, CMD_X, CMD_Y
+    global TimeoutGlobal, Carpeta, RutaOneSpace
+    global TotalErrores, TotalProcesados
+
+    Log("Procesando: " . Nombre)
+
+    Inicio := A_TickCount   ; Marca de tiempo para el timeout
+
+    ; Secuencia de clics para exportar en OneSpace
+    Click, %ALMACENAR_X%, %ALMACENAR_Y%
+    Sleep, 300
+
+    Click, %DWG_X%, %DWG_Y%
+    Sleep, 300
+
+    Click, %CMD_X%, %CMD_Y%
+    Sleep, 200
+
+    ; Enviar el nombre del archivo a OneSpace
+    Send, '%Nombre%
+    Sleep, 200
+    Send, {Enter}
+
+    Loop
+    {
+        Sleep, 200
+
+        ; Comprobación de timeout
+        if (A_TickCount - Inicio > TimeoutGlobal)
+        {
+            Log("ERROR procesando (timeout): " . Nombre)
+            CSV(Nombre, "Error", "Timeout", "Rojo")
+            TotalErrores++
+            return
+        }
+
+        ; Comprobar si OneSpace se ha cerrado
+        Process, Exist, ME10F.exe
+        if (ErrorLevel = 0)
+        {
+            Log("ERROR CRITICO: OneSpace se ha cerrado procesando " . Nombre)
+            CSV(Nombre, "Error", "OneSpace cerrado", "Rojo")
+            TotalErrores++
+
+            MsgBox, 16, ERROR CRITICO, OneSpace se ha cerrado inesperadamente.`n`nEl proceso se detendra.
+
+            Run, %RutaOneSpace%   ; Reinicia OneSpace
+            Sleep, 3000
+
+            ResumenFinal()
+            ExitApp
+        }
+
+        ; Si ya existe el DWG, el archivo se procesó correctamente
+        if FileExist(Carpeta . "\" . Nombre . ".dwg")
+        {
+            Log("OK: " . Nombre)
+            CSV(Nombre, "Procesado", "OK", "Verde")
+            TotalProcesados++
+            return
+        }
+    }
+}
 
 ; ============================
 ; FUNCIÓN RESUMEN FINAL
@@ -69,6 +204,7 @@ ResumenFinal() {
     global TotalEncontrados, TotalIgnorados, TotalSaltados, TotalCola
     global TotalProcesados, TotalErrores
 
+    ; Resumen que se muestra al final de la ejecución
     Resumen =
     (
 Resumen final:
@@ -85,7 +221,7 @@ Errores: %TotalErrores%
 }
 
 ; ============================
-; SETUP
+; SETUP (CAPTURA DE POSICIONES)
 ; ============================
 
 MsgBox, 64, Setup, Coloca el raton sobre ALMACENAR y pulsa F12.
@@ -104,21 +240,20 @@ MouseGetPos, CMD_X, CMD_Y
 ; SELECCIONAR CARPETA
 ; ============================
 
-FileSelectFolder, Carpeta, , 3, Selecciona la carpeta con los archivos
+FileSelectFolder, Carpeta, , 3, Selecciona la carpeta con los archivos 
 if Carpeta =
 {
     MsgBox, No seleccionaste carpeta. Saliendo.
     ExitApp
 }
 
-FileAppend, Carpeta seleccionada: %Carpeta%`n, %LogFile%
+Log("Carpeta seleccionada: " . Carpeta)
 
 ; ============================
 ; GENERAR LISTA FILTRADA
 ; ============================
 
 FileList := ""
-IllegalChars := "<>:|?*"
 
 Loop, %Carpeta%\*.*, 0
 {
@@ -126,103 +261,69 @@ Loop, %Carpeta%\*.*, 0
     RutaCompleta := Carpeta . "\" . NombreCompleto
     TotalEncontrados++
 
-    ; EXTENSIONES PROHIBIDAS
+    ; Extensiones no válidas
     if (SubStr(NombreCompleto, -3) = ".bak"
      or SubStr(NombreCompleto, -3) = ".tmp"
      or SubStr(NombreCompleto, -3) = ".log")
     {
-        FileAppend, Ignorado por extension: %NombreCompleto%`n, %LogFile%
-        FileAppend, %NombreCompleto%;Ignorado extension;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
-        TotalIgnorados++
+        RegistrarIgnorado(NombreCompleto, "Extension", "")
         continue
     }
 
     Base := NombreCompleto
 
-    ; ARCHIVO VACÍO
+    ; Validación de tamaño
     FileGetSize, Tamano, %RutaCompleta%
-    if (Tamano = 0)
+    motivoTam := ValidarTamano(Base, Tamano)
+    if (motivoTam != "")
     {
-        FileAppend, Ignorado (archivo vacío): %Base%`n, %LogFile%
-        FileAppend, %Base%;Ignorado;Archivo vacío;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
-        TotalIgnorados++
+        RegistrarIgnorado(Base, motivoTam, "")
         continue
     }
 
-    ; ARCHIVO MUY PEQUEÑO
-    if (Tamano < TamanoMinimo)
+    ; Caracteres ilegales
+    ilegal := TieneCaracterIlegal(Base)
+    if (ilegal != "")
     {
-        FileAppend, Ignorado (posible corrupto): %Base% (%Tamano% bytes)`n, %LogFile%
-        FileAppend, %Base%;Ignorado;Muy pequeño;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
-        TotalIgnorados++
+        RegistrarIgnorado(Base, "Caracter ilegal: " . ilegal, "")
         continue
     }
 
-    ; ARCHIVO MUY GRANDE
-    if (Tamano > TamanoMaximo)
-    {
-        FileAppend, Ignorado (demasiado grande): %Base% (%Tamano% bytes)`n, %LogFile%
-        FileAppend, %Base%;Ignorado;Demasiado grande;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
-        TotalIgnorados++
-        continue
-    }
-
-    ; NOMBRE ILEGAL
-    Loop, Parse, IllegalChars
-    {
-        if InStr(Base, A_LoopField)
-        {
-            FileAppend, Ignorado (caracter ilegal): %Base%`n, %LogFile%
-            FileAppend, %Base%;Ignorado;Caracter ilegal;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
-            TotalIgnorados++
-            continue, 2
-        }
-    }
-
-    ; PERMISOS DE LECTURA
+    ; Permisos de lectura
     FileRead, TestLectura, %RutaCompleta%
     if (ErrorLevel)
     {
-        FileAppend, Ignorado (sin permisos): %Base%`n, %LogFile%
-        FileAppend, %Base%;Ignorado;Sin permisos;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
-        TotalIgnorados++
+        RegistrarIgnorado(Base, "Sin permisos", "")
         continue
     }
 
-    ; ARCHIVO BLOQUEADO
-    TempName := RutaCompleta . ".locktest"
-    FileMove, %RutaCompleta%, %TempName%, 1
-    if ErrorLevel
+    ; Archivo bloqueado por otro proceso
+    if ArchivoBloqueado(RutaCompleta)
     {
-        FileAppend, Ignorado (bloqueado): %Base%`n, %LogFile%
-        FileAppend, %Base%;Ignorado;Bloqueado;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
-        TotalIgnorados++
+        RegistrarIgnorado(Base, "Bloqueado", "")
         continue
     }
-    FileMove, %TempName%, %RutaCompleta%, 1
 
-    ; SI YA EXISTE EL DWG
+    ; Si ya existe el DWG, no se procesa
     DWGPath := Carpeta . "\" . Base . ".dwg"
     if FileExist(DWGPath)
     {
-        FileAppend, Saltado (DWG existe): %Base%`n, %LogFile%
-        FileAppend, %Base%;Saltado;DWG existente;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Amarillo`n, %CSVFile%
+        Log("Saltado (DWG existe): " . Base)
+        CSV(Base, "Saltado", "DWG existente", "Amarillo")
         TotalSaltados++
         continue
     }
 
-    ; IGNORAR SI YA ES DWG
+    ; Si ya es un DWG, se ignora
     if (SubStr(Base, -3) = ".dwg" or SubStr(Base, -3) = ".DWG")
     {
-        FileAppend, Ignorado (es DWG): %Base%`n, %LogFile%
-        FileAppend, %Base%;Ignorado;Es DWG;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Gris`n, %CSVFile%
-        TotalIgnorados++
+        RegistrarIgnorado(Base, "Es DWG", "")
         continue
     }
 
-    ; AÑADIR A LA COLA
+    ; Archivo válido, se añade a la cola
     FileList .= Base . "`n"
-    FileAppend, Agregado a la cola: %Base%`n, %LogFile%
+    Log("Agregado a la cola: " . Base)
     TotalCola++
 }
 
@@ -233,79 +334,13 @@ Loop, %Carpeta%\*.*, 0
 Sleep, 3000
 SetTitleMatchMode, 2
 
-OneSpaceCMD := RutaOneSpace
-
 Loop, Parse, FileList, `n, `r
 {
     Nombre := A_LoopField
     if (Nombre = "")
         continue
 
-    FileAppend, Procesando: %Nombre%`n, %LogFile%
-
-    Inicio := A_TickCount
-    Timeout := TimeoutGlobal
-
-    Click, %ALMACENAR_X%, %ALMACENAR_Y%
-    Sleep, 300
-
-    Click, %DWG_X%, %DWG_Y%
-    Sleep, 300
-
-    Click, %CMD_X%, %CMD_Y%
-    Sleep, 200
-
-    Send, '%Nombre%
-    Sleep, 200
-    Send, {Enter}
-
-    ErrorLevel := 0
-
-    Loop
-    {
-        Sleep, 200
-
-        if (A_TickCount - Inicio > Timeout)
-        {
-            ErrorLevel := 1
-            break
-        }
-
-        Process, Exist, ME10F.exe
-        if (ErrorLevel = 0)
-        {
-            FileAppend, ERROR CRITICO: OneSpace se ha cerrado procesando %Nombre%`n, %LogFile%
-            FileAppend, %Nombre%;Error;OneSpace cerrado;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Rojo`n, %CSVFile%
-            TotalErrores++
-
-            MsgBox, 16, ERROR CRITICO, OneSpace se ha cerrado inesperadamente.`n`nEl proceso se detendra.
-
-            Run, %OneSpaceCMD%
-            Sleep, 3000
-
-            ResumenFinal()
-            ExitApp
-        }
-
-        if FileExist(Carpeta . "\" . Nombre . ".dwg")
-        {
-            ErrorLevel := 0
-            break
-        }
-    }
-
-    if (ErrorLevel = 1)
-    {
-        FileAppend, ERROR procesando: %Nombre%`n, %LogFile%
-        FileAppend, %Nombre%;Error;Timeout;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Rojo`n, %CSVFile%
-        TotalErrores++
-    }
-    else
-    {
-        FileAppend, OK: %Nombre%`n, %LogFile%
-        FileAppend, %Nombre%;Procesado;OK;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;Verde`n, %CSVFile%
-        TotalProcesados++
-    }
+    ProcesarArchivo(Nombre)
 }
 
 ResumenFinal()
