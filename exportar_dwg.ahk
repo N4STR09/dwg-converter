@@ -235,14 +235,14 @@ EstadisticasAvanzadas() {
     PorcentajeIgnorados := (TotalEncontrados > 0) ? (TotalIgnorados / TotalEncontrados * 100) : 0
 
     ; Texto mostrado en el MsgBox
-    Texto := "Estadísticas avanzadas:`n"
+    Texto := "Estadisticas avanzadas:`n"
     Texto .= "- Tiempo total: " TiempoTotal " s`n"
     Texto .= "- Tiempo medio por archivo: " TiempoMedio " s`n"
     Texto .= "- Archivos por minuto: " PorMinuto "`n"
-    Texto .= "- Éxito: " PorcentajeOK " %`n"
+    Texto .= "- Exito: " PorcentajeOK " %`n"
     Texto .= "- Ignorados: " PorcentajeIgnorados " %`n"
 
-    MsgBox, 64, Estadísticas, %Texto%
+    MsgBox, 64, Estadisticas, %Texto%
 }
 
 ; ============================
