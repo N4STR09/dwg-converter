@@ -17,7 +17,8 @@ FileCreateDir, %CarpetaCSV%
 ; CONFIGURACIÓN DEL LOG
 ; ============================
 
-LogFile := A_ScriptDir . "\export_log.txt"
+FormatoFecha := A_YYYY "-" A_MM "-" A_DD "-" A_Hour "-" A_Min "-" A_Sec
+LogFile := A_ScriptDir . "\log_" . FormatoFecha . ".txt"
 
 FileAppend, `n`n==============================`n, %LogFile%
 FileAppend, Inicio: %A_Now%`n, %LogFile%
