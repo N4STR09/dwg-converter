@@ -16,12 +16,6 @@ FileCreateDir, %CarpetaCSV%
 FileCreateDir, %CarpetaLogs%
 
 ; ============================
-; FECHA DE INICIO GLOBAL
-; ============================
-
-FechaInicioEjecucion := A_YYYY "-" A_MM "-" A_DD " " A_Hour ":" A_Min ":" A_Sec
-
-; ============================
 ; CONFIGURACIÓN DEL LOG
 ; ============================
 
@@ -94,19 +88,26 @@ Log(Msg) {
     FileAppend, %Msg%`n, %LogFile%
 }
 
-CSV(Nombre, Estado, Motivo, Color, TiempoProcesamiento) {
-    global CSVFile, FechaInicioEjecucion
+CSV(Nombre, Estado, Motivo, Color, FechaInicioArchivo, TiempoProcesamiento) {
+    global CSVFile
     if (Color = "")
         Color := "Gris"
-    FileAppend, %Nombre%;%Estado%;%Motivo%;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;%Color%;%FechaInicioEjecucion%;%TiempoProcesamiento%`n, %CSVFile%
+    FileAppend, %Nombre%;%Estado%;%Motivo%;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;%Color%;%FechaInicioArchivo%;%TiempoProcesamiento%`n, %CSVFile%
 }
 
-RegistrarIgnorado(Base, Motivo, Color) {
-    global TotalIgnorados
+RegistrarIgnorado(Base, Motivo, Color, FechaInicioArchivo) {
+    global TotalIgnorados, CSVFile
+
+    ; Evitar duplicados en el CSV
+    FileRead, CSVContent, %CSVFile%
+    if InStr(CSVContent, Base . ";")
+        return
+
     if (Color = "")
         Color := "Gris"
+
     Log("Ignorado (" . Motivo . "): " . Base)
-    CSV(Base, "Ignorado", Motivo, Color, 0)
+    CSV(Base, "Ignorado", Motivo, Color, FechaInicioArchivo, 0)
     TotalIgnorados++
 }
 
@@ -147,6 +148,7 @@ ProcesarArchivo(Nombre) {
     Log("Procesando: " . Nombre)
 
     Inicio := A_TickCount
+    FechaInicioArchivo := A_YYYY "-" A_MM "-" A_DD " " A_Hour ":" A_Min ":" A_Sec
 
     Click, %ALMACENAR_X%, %ALMACENAR_Y%
     Sleep, 300
@@ -169,7 +171,7 @@ ProcesarArchivo(Nombre) {
         {
             TiempoArchivo := (A_TickCount - Inicio) / 1000
             Log("ERROR procesando (timeout): " . Nombre)
-            CSV(Nombre, "Error", "Timeout", "Rojo", TiempoArchivo)
+            CSV(Nombre, "Error", "Timeout", "Rojo", FechaInicioArchivo, TiempoArchivo)
             TotalErrores++
             return
         }
@@ -179,14 +181,11 @@ ProcesarArchivo(Nombre) {
         {
             TiempoArchivo := (A_TickCount - Inicio) / 1000
             Log("ERROR CRITICO: OneSpace se ha cerrado procesando " . Nombre)
-            CSV(Nombre, "Error", "OneSpace cerrado", "Rojo", TiempoArchivo)
+            CSV(Nombre, "Error", "OneSpace cerrado", "Rojo", FechaInicioArchivo, TiempoArchivo)
             TotalErrores++
-
             MsgBox, 16, ERROR CRITICO, OneSpace se ha cerrado inesperadamente.`n`nEl proceso se detendra.
-
             Run, %RutaOneSpace%
             Sleep, 3000
-
             ResumenFinal()
             ExitApp
         }
@@ -195,7 +194,7 @@ ProcesarArchivo(Nombre) {
         {
             TiempoArchivo := (A_TickCount - Inicio) / 1000
             Log("OK: " . Nombre)
-            CSV(Nombre, "Procesado", "OK", "Verde", TiempoArchivo)
+            CSV(Nombre, "Procesado", "OK", "Verde", FechaInicioArchivo, TiempoArchivo)
             TotalProcesados++
             TotalTiempoProcesado += (A_TickCount - Inicio)
             return
@@ -292,55 +291,68 @@ Loop, %Carpeta%\*.*, 0
     RutaCompleta := Carpeta . "\" . NombreCompleto
     TotalEncontrados++
 
+    FechaInicioArchivo := A_YYYY "-" A_MM "-" A_DD " " A_Hour ":" A_Min ":" A_Sec
+
+    ; EXTENSIONES PROHIBIDAS
     if (SubStr(NombreCompleto, -3) = ".bak"
      or SubStr(NombreCompleto, -3) = ".tmp"
      or SubStr(NombreCompleto, -3) = ".log")
     {
-        RegistrarIgnorado(NombreCompleto, "Extension", "")
+        RegistrarIgnorado(NombreCompleto, "Extension", "", FechaInicioArchivo)
         continue
     }
 
     Base := NombreCompleto
 
+    ; ARCHIVO VACÍO / TAMAÑO
     FileGetSize, Tamano, %RutaCompleta%
     motivoTam := ValidarTamano(Base, Tamano)
     if (motivoTam != "")
     {
-        RegistrarIgnorado(Base, motivoTam, "")
+        RegistrarIgnorado(Base, motivoTam, "", FechaInicioArchivo)
         continue
     }
 
+    ; CARACTERES ILEGALES
     ilegal := TieneCaracterIlegal(Base)
     if (ilegal != "")
     {
-        RegistrarIgnorado(Base, "Caracter ilegal: " . ilegal, "")
+        RegistrarIgnorado(Base, "Caracter ilegal: " . ilegal, "", FechaInicioArchivo)
         continue
     }
 
+    ; SIN PERMISOS
     FileRead, TestLectura, %RutaCompleta%
     if (ErrorLevel)
     {
-        RegistrarIgnorado(Base, "Sin permisos", "")
+        RegistrarIgnorado(Base, "Sin permisos", "", FechaInicioArchivo)
         continue
     }
 
+    ; BLOQUEADO
     if ArchivoBloqueado(RutaCompleta)
     {
-        RegistrarIgnorado(Base, "Bloqueado", "")
+        RegistrarIgnorado(Base, "Bloqueado", "", FechaInicioArchivo)
         continue
     }
 
+    ; DWG YA EXISTE
     DWGPath := CarpetaProcesados . "\" . Base . ".dwg"
     if FileExist(DWGPath)
     {
-        CSV(Base, "Saltado", "DWG existente", "Amarillo", 0)
+        ; Evitar duplicados
+        FileRead, CSVContent, %CSVFile%
+        if !InStr(CSVContent, Base . ";")
+            CSV(Base, "Saltado", "DWG existente", "Amarillo", FechaInicioArchivo, 0)
+
         TotalSaltados++
         continue
     }
 
+    ; ES UN DWG
     if (SubStr(Base, -3) = ".dwg" or SubStr(Base, -3) = ".DWG")
     {
-        RegistrarIgnorado(Base, "Es DWG", "")
+        RegistrarIgnorado(Base, "Es DWG", "", FechaInicioArchivo)
         continue
     }
 
