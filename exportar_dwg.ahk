@@ -9,16 +9,18 @@ SetWinDelay, 100
 
 CarpetaProcesados := A_ScriptDir . "\Planos procesados"
 CarpetaCSV := A_ScriptDir . "\estado procesamiento"
+CarpetaLogs := A_ScriptDir . "\Logs"
 
 FileCreateDir, %CarpetaProcesados%
 FileCreateDir, %CarpetaCSV%
+FileCreateDir, %CarpetaLogs%
 
 ; ============================
 ; CONFIGURACIÓN DEL LOG
 ; ============================
 
 FormatoFecha := A_YYYY "-" A_MM "-" A_DD "-" A_Hour "-" A_Min "-" A_Sec
-LogFile := A_ScriptDir . "\log_" . FormatoFecha . ".txt"
+LogFile := CarpetaLogs . "\log_" . FormatoFecha . ".txt"
 
 FileAppend, `n`n==============================`n, %LogFile%
 FileAppend, Inicio: %A_Now%`n, %LogFile%
