@@ -16,6 +16,12 @@ FileCreateDir, %CarpetaCSV%
 FileCreateDir, %CarpetaLogs%
 
 ; ============================
+; FECHA DE INICIO GLOBAL
+; ============================
+
+FechaInicioEjecucion := A_YYYY "-" A_MM "-" A_DD " " A_Hour ":" A_Min ":" A_Sec
+
+; ============================
 ; CONFIGURACIÓN DEL LOG
 ; ============================
 
@@ -77,7 +83,7 @@ if (TamanoMaximo = "ERROR" or TamanoMaximo = "")
 FormatoFecha := A_YYYY "-" A_MM "-" A_DD "_" A_Hour "-" A_Min "-" A_Sec
 CSVFile := CarpetaCSV . "\export_" . FormatoFecha . ".csv"
 
-FileAppend, Nombre;Estado;Motivo;Fecha;Hora;Color`n, %CSVFile%
+FileAppend, Nombre;Estado;Motivo;Fecha;Hora;Color;FechaInicio;TiempoProcesamiento`n, %CSVFile%
 
 ; ============================
 ; FUNCIONES AUXILIARES
@@ -88,11 +94,11 @@ Log(Msg) {
     FileAppend, %Msg%`n, %LogFile%
 }
 
-CSV(Nombre, Estado, Motivo, Color) {
-    global CSVFile
+CSV(Nombre, Estado, Motivo, Color, TiempoProcesamiento) {
+    global CSVFile, FechaInicioEjecucion
     if (Color = "")
         Color := "Gris"
-    FileAppend, %Nombre%;%Estado%;%Motivo%;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;%Color%`n, %CSVFile%
+    FileAppend, %Nombre%;%Estado%;%Motivo%;%A_YYYY%-%A_MM%-%A_DD%;%A_Hour%:%A_Min%;%Color%;%FechaInicioEjecucion%;%TiempoProcesamiento%`n, %CSVFile%
 }
 
 RegistrarIgnorado(Base, Motivo, Color) {
@@ -100,7 +106,7 @@ RegistrarIgnorado(Base, Motivo, Color) {
     if (Color = "")
         Color := "Gris"
     Log("Ignorado (" . Motivo . "): " . Base)
-    CSV(Base, "Ignorado", Motivo, Color)
+    CSV(Base, "Ignorado", Motivo, Color, 0)
     TotalIgnorados++
 }
 
@@ -161,8 +167,9 @@ ProcesarArchivo(Nombre) {
 
         if (A_TickCount - Inicio > TimeoutGlobal)
         {
+            TiempoArchivo := (A_TickCount - Inicio) / 1000
             Log("ERROR procesando (timeout): " . Nombre)
-            CSV(Nombre, "Error", "Timeout", "Rojo")
+            CSV(Nombre, "Error", "Timeout", "Rojo", TiempoArchivo)
             TotalErrores++
             return
         }
@@ -170,8 +177,9 @@ ProcesarArchivo(Nombre) {
         Process, Exist, ME10F.exe
         if (ErrorLevel = 0)
         {
+            TiempoArchivo := (A_TickCount - Inicio) / 1000
             Log("ERROR CRITICO: OneSpace se ha cerrado procesando " . Nombre)
-            CSV(Nombre, "Error", "OneSpace cerrado", "Rojo")
+            CSV(Nombre, "Error", "OneSpace cerrado", "Rojo", TiempoArchivo)
             TotalErrores++
 
             MsgBox, 16, ERROR CRITICO, OneSpace se ha cerrado inesperadamente.`n`nEl proceso se detendra.
@@ -183,20 +191,16 @@ ProcesarArchivo(Nombre) {
             ExitApp
         }
 
-        ; ============================
-        ; NUEVA RUTA DE COMPROBACIÓN
-        ; ============================
-
         if FileExist(CarpetaProcesados . "\" . Nombre . ".dwg")
         {
+            TiempoArchivo := (A_TickCount - Inicio) / 1000
             Log("OK: " . Nombre)
-            CSV(Nombre, "Procesado", "OK", "Verde")
+            CSV(Nombre, "Procesado", "OK", "Verde", TiempoArchivo)
             TotalProcesados++
             TotalTiempoProcesado += (A_TickCount - Inicio)
             return
         }
 
-        ; Si OneSpace genera el DWG en la carpeta de origen, lo movemos
         if FileExist(Carpeta . "\" . Nombre . ".dwg")
         {
             FileMove, %Carpeta%\%Nombre%.dwg, %CarpetaProcesados%\%Nombre%.dwg, 1
@@ -329,8 +333,7 @@ Loop, %Carpeta%\*.*, 0
     DWGPath := CarpetaProcesados . "\" . Base . ".dwg"
     if FileExist(DWGPath)
     {
-        Log("Saltado (DWG existe): " . Base)
-        CSV(Base, "Saltado", "DWG existente", "Amarillo")
+        CSV(Base, "Saltado", "DWG existente", "Amarillo", 0)
         TotalSaltados++
         continue
     }
